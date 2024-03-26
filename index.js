@@ -42,7 +42,7 @@ const auth = () => {
             const responseData = Buffer.concat(data).toString();
             console.log('Response Data:', JSON.parse(responseData));
             setauthkey(JSON.parse(responseData).token);
-            setInterval(write, process.env.DATA_INTERVAL); // Start interval after authentication
+            setInterval(write, process.env.DATA_INTERVAL); 
         });
     });
 
@@ -56,8 +56,12 @@ const auth = () => {
 
 const write = () => {
     const postData = JSON.stringify({
-        id: 5,
-        name: "Item 5"
+        stationId: process.env.DEVICE_ID,
+        timestamp: new Date(),
+        temperature:Math.floor(Math.random() * (30 - 20 + 1)) + 20,
+        humidity:Math.floor(Math.random() * (80 - 40 + 1)) + 40,
+        airPressure:Math.floor(Math.random() * (1020 - 1000 + 1)) + 1000,
+
     });
 
     const options = {
