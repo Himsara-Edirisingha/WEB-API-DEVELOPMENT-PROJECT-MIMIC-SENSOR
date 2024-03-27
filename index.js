@@ -103,6 +103,6 @@ const write = () => {
 if (authkey == "") {
     auth();
 } else {
-    console.log("writing...")
+    console.log("writing....")
     setInterval(write, process.env.DATA_INTERVAL);
 }
