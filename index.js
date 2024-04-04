@@ -1,20 +1,23 @@
 require('dotenv').config();
 const http = require('http');
+const { stations } = require('./data/stationSet');
 
-let authkey = "";
+let authKeys = {};
 
-function setauthkey(key) {
-    authkey = key;
-    return true;
+async function setAuthKey(deviceId, key) {
+    authKeys[deviceId] = key;
 }
 
-async function getauthkey() {
-    return authkey;
+async function getAuthKey(deviceId) {
+    return authKeys[deviceId];
 }
 
-const auth = () => {
+const auth = (station) => {
     const postData = JSON.stringify({
-        id: process.env.DEVICE_ID
+
+        dname: station.name,
+        apiKey: station.apiKey
+
     });
 
     const options = {
@@ -38,11 +41,11 @@ const auth = () => {
             data.push(chunk);
         });
 
-        res.on('end', () => {
+        res.on('end', async () => {
             const responseData = Buffer.concat(data).toString();
             console.log('Response Data:', JSON.parse(responseData));
-            setauthkey(JSON.parse(responseData).token);
-            setInterval(write, process.env.DATA_INTERVAL); 
+            await setAuthKey(station._id, JSON.parse(responseData).token);
+            write(station);
         });
     });
 
@@ -54,14 +57,13 @@ const auth = () => {
     req.end();
 };
 
-const write = () => {
+const write = (station) => {
     const postData = JSON.stringify({
-        stationId: process.env.DEVICE_ID,
+        stationId: station._id,
         timestamp: new Date(),
-        temperature:Math.floor(Math.random() * (30 - 20 + 1)) + 20,
-        humidity:Math.floor(Math.random() * (80 - 40 + 1)) + 40,
-        airPressure:Math.floor(Math.random() * (1020 - 1000 + 1)) + 1000,
-
+        temperature: Math.floor(Math.random() * (40 - (-20) + 1)) + (-20),
+        humidity: Math.floor(Math.random() * (100 - 20 + 1)) + 20,
+        airPressure: Math.floor(Math.random() * (1050 - 950 + 1)) + 950,
     });
 
     const options = {
@@ -72,7 +74,7 @@ const write = () => {
         headers: {
             'Content-Type': 'application/json',
             'Content-Length': Buffer.byteLength(postData),
-            'authorization': "Bearer " + authkey
+            'authorization': "Bearer " + authKeys[station._id]
         },
     };
 
@@ -88,7 +90,7 @@ const write = () => {
 
         res.on('end', () => {
             const responseData = Buffer.concat(data).toString();
-            console.log('Response Data:', JSON.parse(responseData));
+           // console.log('Response Data:', JSON.parse(responseData));
         });
     });
 
@@ -100,9 +102,18 @@ const write = () => {
     req.end();
 };
 
-if (authkey == "") {
-    auth();
-} else {
-    console.log("writing....")
-    setInterval(write, process.env.DATA_INTERVAL);
+async function main() {
+    while (true) {
+        stations.forEach(station => {
+            if (!authKeys[station._id]) {
+                auth(station);
+            } else {
+                console.log(`Station ${station.name} already authenticated. Writing data...`);
+                write(station);
+            }
+        });
+        await new Promise(resolve => setTimeout(resolve, process.env.DATA_INTERVAL));
+    }
 }
+
+main();
